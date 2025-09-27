@@ -1,0 +1,6 @@
+os
+json
+requests
+python-dotenv
+sqlite3
+
