@@ -1,16 +1,17 @@
 import os
+import pandas as pd
 import requests
 import sqlite3
 from dotenv import load_dotenv
 import json
 
-# Load environment variables
+# Just loading environment variables
 load_dotenv()
 
 API_BASE_URL = os.getenv("API_BASE_URL")
 PAGE_SIZE = int(os.getenv("PAGE_SIZE", 500))
 
-## Pull data from the Weather data API and return required records
+## Function to pull data from the Weather data API and return required records
 
 def fetch_data(min_records=1000):
     records = []
@@ -38,7 +39,7 @@ def fetch_data(min_records=1000):
     return records[:min_records]
 
 
-## Create table in SQLITE Database with the necessary columns
+## Function to create table in SQLITE Database with the necessary columns
 
 def create_table(conn):
     cur = conn.cursor()
@@ -56,7 +57,7 @@ def create_table(conn):
     )
     conn.commit()
 
-# Insert records into the Database
+# Function to insert records into the Database
 
 def insert_records(conn, records):
     cur = conn.cursor()
@@ -99,3 +100,17 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Setting up connection to existing DB
+conn = sqlite3.connect("bloomeroo.db")
+
+# Run a simple select query to validate if data has been inserted correctly or not
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM sensor_readings LIMIT 100")
+
+rows = cursor.fetchall()
+
+for row in rows:
+    print(row)
+
+conn.close()
