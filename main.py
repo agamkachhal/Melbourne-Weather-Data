@@ -19,23 +19,33 @@ def fetch_data(min_records=1000):
     while len(records) < min_records:
         params = {"$limit": PAGE_SIZE, "$offset": offset}
         resp = requests.get(API_BASE_URL, params=params)
-        batch = resp.json()
+        data = resp.json()
 
-        if not batch:
+        # extract actual records from "results"
+        batch = data.get("results", [])
+        if not isinstance(batch, list) or not batch:
+            print("No more data returned from API.")
             break
 
         records.extend(batch)
         offset += len(batch)
+        print(f"Fetched {len(records)} records so far...")
 
+        if len(batch) < PAGE_SIZE:
+            break
+
+    print(f"Total records fetched: {len(records)}")
     return records[:min_records]
+
 
 ## Create table in SQLITE Database with the necessary columns
 
 def create_table(conn):
     cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS sensor_readings")
     cur.execute(
         """
-        CREATE TABLE IF NOT EXISTS sensor_readings (
+        CREATE TABLE sensor_readings (
             device_id TEXT,
             received_at TEXT,
             airtemperature FLOAT,
@@ -50,22 +60,27 @@ def create_table(conn):
 
 def insert_records(conn, records):
     cur = conn.cursor()
-    for r in records:
+
+    # Ensure each record is a dictionary before accessing keys
+    valid_records = [r for r in records if isinstance(r, dict)]
+
+    print(f"Inserting {len(valid_records)} valid records (skipping {len(records) - len(valid_records)} invalid ones)")
+
+    for r in valid_records:
         cur.execute(
             """
-            INSERT INTO sensor_readings(sensor_id, timestamp, temperature, humidity, location, raw)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO sensor_readings(device_id, received_at, airtemperature, relativehumidity, sensorlocation)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
-                str(r.get("device_id")),
+                r.get("device_id"),
                 r.get("received_at"),
                 r.get("airtemperature"),
                 r.get("relativehumidity"),
                 str(r.get("sensorlocation")),
-                json.dumps(r),
-
             ),
         )
+
     conn.commit()
 
 
